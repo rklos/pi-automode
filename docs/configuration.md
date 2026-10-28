@@ -76,6 +76,8 @@ Example:
     "deniedPaths": [],
     "maxUserTranscriptTokens": 4000,
     "maxToolTranscriptTokens": 4000,
+    "includeToolResults": false,
+    "maxOutcomeTranscriptTokens": 2000,
     "environment": [
       "$defaults",
       "Source control: github.example.com/acme-corp and all repos under it",
@@ -103,13 +105,24 @@ Example:
 
 Pi-automode does not support the former `maxTranscriptLines` field. Evidence selection now uses token budgets instead of line counts.
 
-## Ask-user tools and explicit authorization
+## Include tool results
 
-Classifier evidence includes normal user messages and assistant tool-call inputs. It excludes assistant prose and all tool results. This exclusion includes answers from ask-user tools such as `@vanillagreen/pi-questions`.
+`includeToolResults` adds past tool results to classifier evidence. It is disabled by default and cannot be enabled through shared project configuration.
 
-Selecting "Yes" in that tool helps the agent select its next action. Pi-automode does not treat the result as authorization to override a soft deny.
+```json
+{
+  "autoMode": {
+    "includeToolResults": true,
+    "maxOutcomeTranscriptTokens": 2000
+  }
+}
+```
 
-Send the authorization as a normal chat message. Then the agent can retry the action. Tool results remain excluded because they can contain untrusted or prompt-injected content.
+`maxOutcomeTranscriptTokens` sets a separate approximate budget (default 2000, minimum 32). Large results retain text from the beginning and end.
+
+Result text is sent to the configured classifier provider, which can differ from the main agent's provider. Pi-automode does not redact secrets or private answers. `log.classifierIo` also records the selected results locally.
+
+Tool results remain untrusted input. A questionnaire answer can provide evidence of user intent, but does not automatically authorize an action.
 
 ## `$defaults`
 

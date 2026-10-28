@@ -52,6 +52,9 @@ export type AutoModeSettings = {
   deniedPaths?: unknown;
   maxUserTranscriptTokens?: number;
   maxToolTranscriptTokens?: number;
+  /** Include historical tool results in classifier evidence. Off by default. */
+  includeToolResults?: boolean;
+  maxOutcomeTranscriptTokens?: number;
   environment?: unknown;
   allow?: unknown;
   protectedPaths?: unknown;
@@ -98,6 +101,8 @@ export type EffectiveConfig = {
   deniedPaths: string[];
   maxUserTranscriptTokens: number;
   maxToolTranscriptTokens: number;
+  includeToolResults: boolean;
+  maxOutcomeTranscriptTokens: number;
   environment: string[];
   allow: string[];
   protectedPaths: string[];

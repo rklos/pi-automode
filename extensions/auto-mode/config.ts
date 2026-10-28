@@ -289,6 +289,8 @@ export function validateSettingsFile(
         "deniedPaths",
         "maxUserTranscriptTokens",
         "maxToolTranscriptTokens",
+        "includeToolResults",
+        "maxOutcomeTranscriptTokens",
         "environment",
         "allow",
         "protectedPaths",
@@ -359,6 +361,14 @@ export function validateSettingsFile(
           `${source}: autoMode.allowInsideWorkingDirectory must be a boolean`,
         );
       }
+      if (
+        hasOwn(autoMode, "includeToolResults") &&
+        typeof autoMode.includeToolResults !== "boolean"
+      ) {
+        diagnostics.push(
+          `${source}: autoMode.includeToolResults must be a boolean`,
+        );
+      }
       validateDeniedPathsSetting(
         autoMode.deniedPaths,
         source,
@@ -368,6 +378,7 @@ export function validateSettingsFile(
         const key of [
           "maxUserTranscriptTokens",
           "maxToolTranscriptTokens",
+          "maxOutcomeTranscriptTokens",
         ] as const
       ) {
         if (
@@ -650,6 +661,14 @@ function applyAutoModeScalars(
       )
       ? settings.maxToolTranscriptTokens
       : base.maxToolTranscriptTokens,
+    includeToolResults: typeof settings.includeToolResults === "boolean"
+      ? settings.includeToolResults
+      : base.includeToolResults,
+    maxOutcomeTranscriptTokens: validTranscriptBudget(
+        settings.maxOutcomeTranscriptTokens,
+      )
+      ? settings.maxOutcomeTranscriptTokens
+      : base.maxOutcomeTranscriptTokens,
     log: mergeLog(base.log, settings.log),
   };
 }
@@ -690,6 +709,8 @@ export function buildEffectiveConfigFromSources(
     classifierTimeoutMs: DEFAULT_CLASSIFIER_TIMEOUT_MS,
     maxUserTranscriptTokens: DEFAULT_MAX_USER_TRANSCRIPT_TOKENS,
     maxToolTranscriptTokens: DEFAULT_MAX_TOOL_TRANSCRIPT_TOKENS,
+    includeToolResults: false,
+    maxOutcomeTranscriptTokens: 2000,
     environment: [...DEFAULT_ENVIRONMENT],
     allow: [...DEFAULT_ALLOW],
     protectedPaths: [...DEFAULT_PROTECTED_PATHS],
