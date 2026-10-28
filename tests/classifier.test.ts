@@ -431,7 +431,16 @@ test("default classifier sends OpenCode session headers through raw registry com
 });
 
 test("default classifier forwards opted-in outcomes to both stages without bypassing review", async () => {
-	for (const includeToolResults of [false, true]) {
+	const scenarios: Array<{ enabled: boolean; from?: string[]; budget?: number; expected: boolean }> = [
+		{ enabled: false, expected: false },
+		{ enabled: true, expected: true },
+		{ enabled: true, from: ["custom_questionnaire"], expected: true },
+		{ enabled: true, from: ["bash"], expected: false },
+		{ enabled: true, from: [], expected: false },
+		{ enabled: false, from: ["custom_questionnaire"], expected: false },
+		{ enabled: true, from: ["custom_questionnaire"], budget: 32, expected: false },
+	];
+	for (const { enabled, from, budget = 2000, expected } of scenarios) {
 		const entries = [
 			{ type: "message", message: { role: "assistant", content: [{
 				type: "toolCall", id: "question-1", name: "custom_questionnaire",
@@ -461,14 +470,15 @@ test("default classifier forwards opted-in outcomes to both stages without bypas
 			},
 		});
 		const result = await defaultClassifyAction(ctx as never,
-			baseConfig({ includeToolResults }),
+			baseConfig({ includeToolResults: enabled, includeToolResultsFrom: from,
+				maxToolResultTranscriptTokens: budget }),
 			'{"toolName":"edit","input":{"path":"B"}}', "");
 		assert.equal(result.decision, "block");
 		assert.equal(contexts.length, 2);
 		for (const context of contexts) {
 			const messages = JSON.stringify((context as { messages: unknown[] }).messages);
-			assert.equal(messages.includes("USER_ANSWER"), includeToolResults);
-			assert.equal(messages.includes("ToolResult "), includeToolResults);
+			assert.equal(messages.includes("USER_ANSWER"), expected);
+			assert.equal(messages.includes("ToolResult "), expected);
 		}
 	}
 });

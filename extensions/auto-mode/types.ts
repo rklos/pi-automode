@@ -54,7 +54,8 @@ export type AutoModeSettings = {
   maxToolTranscriptTokens?: number;
   /** Include historical tool results in classifier evidence. Off by default. */
   includeToolResults?: boolean;
-  maxOutcomeTranscriptTokens?: number;
+  includeToolResultsFrom?: string[];
+  maxToolResultTranscriptTokens?: number;
   environment?: unknown;
   allow?: unknown;
   protectedPaths?: unknown;
@@ -102,7 +103,8 @@ export type EffectiveConfig = {
   maxUserTranscriptTokens: number;
   maxToolTranscriptTokens: number;
   includeToolResults: boolean;
-  maxOutcomeTranscriptTokens: number;
+  includeToolResultsFrom?: string[];
+  maxToolResultTranscriptTokens: number;
   environment: string[];
   allow: string[];
   protectedPaths: string[];

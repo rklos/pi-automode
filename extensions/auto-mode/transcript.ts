@@ -19,7 +19,8 @@ export type ClassifierTranscriptBudgets = {
   maxUserTokens: number;
   maxToolTokens: number;
   includeToolResults?: boolean;
-  maxOutcomeTranscriptTokens?: number;
+  includeToolResultsFrom?: string[];
+  maxToolResultTranscriptTokens?: number;
 };
 
 function flattenUserContent(content: unknown): string {
@@ -207,7 +208,11 @@ export function buildClassifierTranscript(
   const users = selectUserEntries(entries, budgets.maxUserTokens);
   const tools = selectToolEntries(entries, budgets.maxToolTokens);
   const outcomes = budgets.includeToolResults === true && snapshot.supportsOutcomes
-    ? selectOutcomeEntries(contextEntries, budgets.maxOutcomeTranscriptTokens ?? 2000)
+    ? selectOutcomeEntries(
+      contextEntries,
+      budgets.maxToolResultTranscriptTokens ?? 2000,
+      budgets.includeToolResultsFrom,
+    )
     : { selected: [], omitted: budgets.includeToolResults === true };
   const selected = [
     ...users.selected,

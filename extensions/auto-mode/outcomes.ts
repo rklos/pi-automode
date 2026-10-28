@@ -119,7 +119,9 @@ function renderOutcome(
 export function selectOutcomeEntries(
   contextEntries: ReadonlyArray<{ type: string; message?: unknown }>,
   maxTokens: number,
+  includedTools?: readonly string[],
 ): { selected: OutcomeEntry[]; omitted: boolean } {
+  const toolNames = includedTools === undefined ? undefined : new Set(includedTools);
   const calls = new Map<string, Call | null>();
   const resultCounts = new Map<string, number>();
   for (const [index, entry] of contextEntries.entries()) {
@@ -151,6 +153,10 @@ export function selectOutcomeEntries(
     if (entry?.type !== "message") continue;
     const message = record(entry.message);
     if (message?.role !== "toolResult") continue;
+    if (toolNames && (typeof message.toolName !== "string" || !toolNames.has(message.toolName))) {
+      omitted = true;
+      continue;
+    }
     const id = message.toolCallId;
     const call = typeof id === "string" ? calls.get(id) : undefined;
     if (typeof id !== "string" || !call || call.index >= index ||

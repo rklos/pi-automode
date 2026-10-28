@@ -29,10 +29,10 @@ function result(id = "q1", name = "ask_user_question", text = "Yes, but not file
 	};
 }
 
-function transcript(entries: unknown[], enabled = true, budget = 2000) {
+function transcript(entries: unknown[], enabled = true, budget = 2000, from?: string[]) {
 	return buildClassifierTranscript(createFakeCtx(entries) as never, {
 		maxUserTokens: 400, maxToolTokens: 32,
-		includeToolResults: enabled, maxOutcomeTranscriptTokens: budget,
+		includeToolResults: enabled, includeToolResultsFrom: from, maxToolResultTranscriptTokens: budget,
 	});
 }
 
@@ -57,13 +57,13 @@ test("outcome policy treats results as untrusted reports, not automatic authoriz
 
 test("outcomes require explicit user-owned opt-in and support disabling in later sources", () => {
 	assert.equal(buildEffectiveConfigFromSources({}).includeToolResults, false);
-	assert.equal(buildEffectiveConfigFromSources({}).maxOutcomeTranscriptTokens, 2000);
+	assert.equal(buildEffectiveConfigFromSources({}).maxToolResultTranscriptTokens, 2000);
 	assert.equal(buildEffectiveConfigFromSources({
-		projectSharedSettings: [{ autoMode: { includeToolResults: true, maxOutcomeTranscriptTokens: 500 } }],
+		projectSharedSettings: [{ autoMode: { includeToolResults: true, maxToolResultTranscriptTokens: 500 } }],
 	}).includeToolResults, false);
 	assert.equal(buildEffectiveConfigFromSources({
-		projectSharedSettings: [{ autoMode: { maxOutcomeTranscriptTokens: 500 } }],
-	}).maxOutcomeTranscriptTokens, 2000);
+		projectSharedSettings: [{ autoMode: { maxToolResultTranscriptTokens: 500 } }],
+	}).maxToolResultTranscriptTokens, 2000);
 	assert.equal(buildEffectiveConfigFromSources({
 		globalSettings: [{ autoMode: { includeToolResults: true } }],
 		inlineSettings: [{ autoMode: { includeToolResults: false } }],
@@ -79,16 +79,110 @@ test("outcomes require explicit user-owned opt-in and support disabling in later
 		inlineSettings: [{ autoMode: { includeToolResults: "true" } } as never],
 	}).includeToolResults, false);
 	for (const value of [-1, 0, 31, 1.5, "500", true, Infinity]) {
-		assert.ok(validateSettingsFile({ autoMode: { maxOutcomeTranscriptTokens: value } } as never, "test")
-			.some(x => x.includes("maxOutcomeTranscriptTokens")));
+		assert.ok(validateSettingsFile({ autoMode: { maxToolResultTranscriptTokens: value } } as never, "test")
+			.some(x => x.includes("maxToolResultTranscriptTokens")));
 	}
 	assert.equal(validateSettingsFile({
-		autoMode: { includeToolResults: true, maxOutcomeTranscriptTokens: 500 },
+		autoMode: { includeToolResults: true, maxToolResultTranscriptTokens: 500 },
 	}, "test").length, 0);
 	assert.equal(buildEffectiveConfigFromSources({
-		globalSettings: [{ autoMode: { maxOutcomeTranscriptTokens: 500 } }],
-		projectLocalSettings: [{ autoMode: { maxOutcomeTranscriptTokens: -1 } }],
-	}).maxOutcomeTranscriptTokens, 500);
+		globalSettings: [{ autoMode: { maxToolResultTranscriptTokens: 500 } }],
+		projectLocalSettings: [{ autoMode: { maxToolResultTranscriptTokens: -1 } }],
+	}).maxToolResultTranscriptTokens, 500);
+});
+
+test("tool result filters and budgets use user-owned settings with replacement precedence", () => {
+	assert.equal(buildEffectiveConfigFromSources({}).includeToolResultsFrom, undefined);
+	assert.equal(buildEffectiveConfigFromSources({}).maxToolResultTranscriptTokens, 2000);
+	const settings = { autoMode: {
+		includeToolResultsFrom: ["ask_user_question"], maxToolResultTranscriptTokens: 300,
+	} };
+	assert.deepEqual(validateSettingsFile(settings, "test"), []);
+	const shared = buildEffectiveConfigFromSources({ projectSharedSettings: [settings] });
+	assert.equal(shared.includeToolResultsFrom, undefined);
+	assert.equal(shared.maxToolResultTranscriptTokens, 2000);
+	const local = buildEffectiveConfigFromSources({ projectLocalSettings: [settings] });
+	assert.deepEqual(local.includeToolResultsFrom, ["ask_user_question"]);
+	assert.equal(local.includeToolResults, false);
+	assert.equal(local.maxToolResultTranscriptTokens, 300);
+	assert.deepEqual(buildEffectiveConfigFromSources({
+		globalSettings: [{ autoMode: { includeToolResultsFrom: ["bash"] } }],
+		projectLocalSettings: [settings],
+	}).includeToolResultsFrom, ["ask_user_question"]);
+	assert.deepEqual(buildEffectiveConfigFromSources({
+		globalSettings: [settings],
+		inlineSettings: [{ autoMode: { includeToolResultsFrom: [] } }],
+	}).includeToolResultsFrom, []);
+	assert.deepEqual(buildEffectiveConfigFromSources({
+		globalSettings: [settings],
+		inlineSettings: [{ autoMode: { includeToolResults: true } }],
+	}).includeToolResultsFrom, ["ask_user_question"]);
+});
+
+test("invalid tool result filters report diagnostics and do not include all results", () => {
+	for (const value of [null, "bash", true, {}, [""], [" "], ["bash", 7]]) {
+		const settings = { autoMode: { includeToolResultsFrom: value } } as never;
+		assert.ok(validateSettingsFile(settings, "test")
+			.some(message => message.includes("includeToolResultsFrom")));
+		assert.deepEqual(buildEffectiveConfigFromSources({
+			inlineSettings: [settings],
+		}).includeToolResultsFrom, []);
+	}
+	assert.deepEqual(validateSettingsFile({ autoMode: { includeToolResultsFrom: [] } }, "test"), []);
+});
+
+test("tool result filters select exact names without changing user or tool-call evidence", () => {
+	const entries = [
+		{ type: "message", message: { role: "user", content: "USER_INTENT" } },
+		call("bash-1", "bash"), result("bash-1", "bash", "BASH_OUTPUT"),
+		call(), result(),
+	];
+	assert.deepEqual(outcomes(transcript(entries)).map(e => e.toolName), ["bash", "ask_user_question"]);
+	const text = buildClassifierTranscript(createFakeCtx(entries) as never, {
+		maxUserTokens: 400, maxToolTokens: 400, includeToolResults: true,
+		includeToolResultsFrom: ["ask_user_question"], maxToolResultTranscriptTokens: 2000,
+	});
+	assert.deepEqual(outcomes(text).map(e => e.toolName), ["ask_user_question"]);
+	assert.doesNotMatch(text, /BASH_OUTPUT/);
+	assert.match(text, /User: USER_INTENT/);
+	assert.match(text, /ToolCall bash/);
+	for (const from of [[], ["unknown"], ["*"], ["Ask_User_Question"]]) {
+		assert.equal(outcomes(transcript(entries, true, 2000, from)).length, 0);
+	}
+	assert.equal(outcomes(transcript(entries, false, 2000, ["ask_user_question"])).length, 0);
+	assert.deepEqual(outcomes(transcript(entries, true, 2000, ["ask_user_question", "ask_user_question"]))
+		.map(e => e.toolName), ["ask_user_question"]);
+});
+
+test("excluded results are not read and do not consume result count or token budgets", () => {
+	let reads = 0;
+	const excluded = Array.from({ length: 45 }, (_, i) => {
+		const entry = result(`bash-${i}`, "bash");
+		Object.defineProperty(entry.message, "content", {
+			get() { reads += 1; throw new Error("Excluded content must not be read"); },
+		});
+		return [call(`bash-${i}`, "bash"), entry];
+	}).flat();
+	const entries = [call(), result(), ...excluded];
+	const text = buildClassifierTranscript(createFakeCtx(entries) as never, {
+		maxUserTokens: 400, maxToolTokens: 32, includeToolResults: true,
+		includeToolResultsFrom: ["ask_user_question"], maxToolResultTranscriptTokens: 100,
+	});
+	assert.equal(reads, 0);
+	assert.deepEqual(outcomes(text).map(e => e.toolName), ["ask_user_question"]);
+	assert.ok(outcomeLines(text).reduce((n, line) => n + Math.ceil((line.length + 1) / 4), 0) <= 100);
+});
+
+test("filtered results still require unambiguous matching calls", () => {
+	for (const entries of [
+		[call(), call(), result()],
+		[call(), result(), result()],
+		[call("q1", "bash"), result()],
+		[call(), result("q1", "bash")],
+		[result(), call()],
+	]) {
+		assert.equal(outcomes(transcript(entries, true, 2000, ["ask_user_question"])).length, 0);
+	}
 });
 
 test("disabled outcomes leave existing transcript behavior byte-for-byte unchanged", () => {
@@ -314,7 +408,7 @@ test("only active compacted context is used, not the full or abandoned branch", 
 		buildContextEntries: () => { snapshots += 1; return [call("new"), result("new")]; },
 	});
 	const text = buildClassifierTranscript(ctx as never, {
-		maxUserTokens: 400, maxToolTokens: 400, includeToolResults: true, maxOutcomeTranscriptTokens: 500,
+		maxUserTokens: 400, maxToolTokens: 400, includeToolResults: true, maxToolResultTranscriptTokens: 500,
 	});
 	assert.deepEqual(outcomes(text).map(e => e.toolCallId), ["new"]);
 	assert.equal(snapshots, 1);

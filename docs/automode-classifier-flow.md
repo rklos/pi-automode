@@ -316,7 +316,7 @@ Pi-automode builds the transcript from active context entries. By default it inc
 
 Pi-automode always excludes assistant prose and hidden reasoning. User evidence and tool-call evidence have separate approximate-token budgets. Both budgets default to 4000.
 
-With `includeToolResults: true`, the transcript also includes text results paired with earlier calls. Results have a separate `maxOutcomeTranscriptTokens` budget (default 2000). They remain untrusted evidence. See [Include tool results](configuration.md#include-tool-results).
+With `includeToolResults: true`, the transcript also includes selected text results paired with earlier calls. Results have a separate `maxToolResultTranscriptTokens` budget (default 2000). They remain untrusted evidence. See [Include tool results](configuration.md#include-tool-results).
 
 The selector keeps the first and latest user messages. It fills the remaining budget from the newest eligible entries. It renders retained evidence in chronological order. It also marks omitted or truncated evidence.
 

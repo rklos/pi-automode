@@ -158,6 +158,6 @@ If `classifierModel` uses a cloud provider, the payload leaves the machine. Enab
 
 `autoMode.maxUserTranscriptTokens` and `autoMode.maxToolTranscriptTokens` limit transcript evidence separately. Both fields default to approximately 4000 tokens.
 
-Tool results use `autoMode.maxOutcomeTranscriptTokens`, which defaults to approximately 2000 tokens.
+Tool results use `autoMode.maxToolResultTranscriptTokens`, which defaults to approximately 2000 tokens.
 
 Pi-automode excludes assistant prose and excludes tool results by default. Provider cache hits can reduce processed or billed input. The log still records the full classifier payload.

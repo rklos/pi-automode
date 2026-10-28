@@ -77,7 +77,7 @@ Example:
     "maxUserTranscriptTokens": 4000,
     "maxToolTranscriptTokens": 4000,
     "includeToolResults": false,
-    "maxOutcomeTranscriptTokens": 2000,
+    "maxToolResultTranscriptTokens": 2000,
     "environment": [
       "$defaults",
       "Source control: github.example.com/acme-corp and all repos under it",
@@ -107,18 +107,21 @@ Pi-automode does not support the former `maxTranscriptLines` field. Evidence sel
 
 ## Include tool results
 
-`includeToolResults` adds past tool results to classifier evidence. It is disabled by default and cannot be enabled through shared project configuration.
+`includeToolResults` adds past tool results to classifier evidence. It is disabled by default. These options cannot be set through shared project configuration.
 
 ```json
 {
   "autoMode": {
     "includeToolResults": true,
-    "maxOutcomeTranscriptTokens": 2000
+    "includeToolResultsFrom": ["ask_user_question", "bash"],
+    "maxToolResultTranscriptTokens": 2000
   }
 }
 ```
 
-`maxOutcomeTranscriptTokens` sets a separate approximate budget (default 2000, minimum 32). Large results retain text from the beginning and end.
+`includeToolResultsFrom` restricts results to exact tool names. Omit it to include all tools, or use `[]` to exclude all results. A higher-precedence list replaces the earlier list.
+
+`maxToolResultTranscriptTokens` sets a separate approximate budget (default 2000, minimum 32). Large results retain text from the beginning and end.
 
 Result text is sent to the configured classifier provider, which can differ from the main agent's provider. Pi-automode does not redact secrets or private answers. `log.classifierIo` also records the selected results locally.
 

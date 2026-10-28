@@ -152,7 +152,7 @@ export function baseConfig(overrides: Partial<EffectiveConfig> = {}): EffectiveC
 		maxUserTranscriptTokens: 4000,
 		maxToolTranscriptTokens: 4000,
 		includeToolResults: false,
-		maxOutcomeTranscriptTokens: 2000,
+		maxToolResultTranscriptTokens: 2000,
 		environment: [],
 		allow: [],
 		protectedPaths: [...DEFAULT_PROTECTED_PATHS],

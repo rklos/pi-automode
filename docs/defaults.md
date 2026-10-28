@@ -120,7 +120,7 @@ Classifier evidence has separate approximate-token budgets:
 
 - `maxUserTranscriptTokens`: 4000
 - `maxToolTranscriptTokens`: 4000
-- `maxOutcomeTranscriptTokens`: 2000 (requires `includeToolResults: true`)
+- `maxToolResultTranscriptTokens`: 2000 (requires `includeToolResults: true`)
 
 The selector keeps the first and latest user messages as intent anchors. It fills the remaining space from the newest eligible entries.
 

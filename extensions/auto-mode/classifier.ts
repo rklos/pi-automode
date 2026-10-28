@@ -871,7 +871,8 @@ export const defaultClassifyAction: ClassifyAction = async (
     maxUserTokens: config.maxUserTranscriptTokens,
     maxToolTokens: config.maxToolTranscriptTokens,
     includeToolResults: config.includeToolResults,
-    maxOutcomeTranscriptTokens: config.maxOutcomeTranscriptTokens,
+    includeToolResultsFrom: config.includeToolResultsFrom,
+    maxToolResultTranscriptTokens: config.maxToolResultTranscriptTokens,
   });
   const contextText = `<loaded-project-instructions>\n${
     loadedContext || "(none)"
